@@ -1,1 +1,183 @@
-hello
+<html>
+  <head> </head>
+  <body>
+    <script>
+      const grabCompanies = () =>
+        fetch("https://acme-users-api-rev.herokuapp.com/api/companies")
+          .then(response => response.json())
+          .then(data => data)
+          .catch(e => console.log(e));
+
+      const grabProducts = () =>
+        fetch("https://acme-users-api-rev.herokuapp.com/api/products")
+          .then(response => response.json())
+          .then(jsonData => jsonData)
+          .catch(e => console.log(e));
+
+      const grabOfferings = () =>
+        fetch("https://acme-users-api-rev.herokuapp.com/api/offerings")
+          .then(response => response.json())
+          .then(jsonData => jsonData)
+          .catch(e => console.log(e));
+
+      // console.log("offeringsData", grabOfferings());
+      //return products within a price range
+      const findProductsInPriceRange = (products, range) => {
+        return products.filter(item => {
+          if (
+            item.suggestedPrice <= range.max &&
+            item.suggestedPrice >= range.min
+          ) {
+            return true;
+          } else {
+            return false;
+          }
+        });
+      };
+
+      grabProducts()
+        .then(products => {
+          //console.log(products);
+          return findProductsInPriceRange(products, { min: 2, max: 5 });
+        })
+        .then(filteredProducts =>
+          console.log("filtered products", filteredProducts)
+        );
+
+      //returns object where key is first letter of company name
+      //value for each key si the array of those companies
+      const groupedCompaniesByLetter = companies => {
+        let groupedObj = {};
+        for (let i = 0; i < companies.length; i++) {
+          let currentCompObj = companies[i];
+          let currentName = currentCompObj.name;
+          if (groupedObj[currentName[0]] === undefined) {
+            groupedObj[currentName[0]] = [currentCompObj];
+          } else {
+            groupedObj[currentName[0]].push(currentCompObj);
+          }
+        }
+
+        console.log("groupedObj", groupedObj);
+        return groupedObj;
+      };
+      grabCompanies().then(companies => {
+        //console.log("companies", companies);
+        return groupedCompaniesByLetter(companies);
+      });
+
+      //returns object where key is a state
+      //value for each key is the array of those companies in that state
+      const groupedCompaniesBySate = companies => {
+        let compByState = {};
+        for (let i = 0; i < companies.length; i++) {
+          let currCompObj = companies[i];
+          let compState = currCompObj.state;
+          //console.log("compState", compState);
+          if (compByState[compState] === undefined) {
+            compByState[compState] = [currCompObj];
+          } else {
+            compByState[compState].push(currCompObj);
+          }
+        }
+        return compByState;
+      };
+      grabCompanies().then(companies => {
+        return groupedCompaniesBySate(companies);
+      });
+
+      // returns an array of the offerings with each offering having a company and product??
+
+      const allData = Promise.all([
+        grabCompanies(),
+        grabProducts(),
+        grabOfferings()
+      ]).then(([companies, products, offerings]) => {
+        console.log(
+          "processedOffferings",
+          processedOffferings(companies, products, offerings)
+        );
+        console.log(
+          "threeOrMoreOfferings",
+          threeOrMoreOfferings(companies, offerings, 3)
+        );
+        console.log(
+          "processedProducts",
+          processedProducts(products, offerings)
+        );
+      });
+
+      const processedOffferings = (companies, products, offerings) => {
+        let finalArr = [];
+        offerings.forEach(eachOff => {
+          const newObj = {};
+          newObj.companyId = eachOff.companyId;
+          newObj.productId = eachOff.productId;
+          newObj.price = eachOff.price;
+          // add product name
+          // products.forEach(eachProd => {
+          //   if (newObj.productId === eachProd.id)
+          //     newObj.productName = eachProd.name;
+          // });
+
+          newObj.productName = products.find(
+            prod => (prod.id = eachOff.productId)
+          ).name;
+
+          //add company name
+          companies.forEach(eachComp => {
+            if (newObj.companyId === eachComp.id)
+              newObj.companyName = eachComp.name;
+          });
+          finalArr.push(newObj);
+        });
+        return finalArr;
+      };
+
+      //returns the companies that have n or more offerings
+      const threeOrMoreOfferings = (companies, offerings, n) => {
+        let arr = [];
+
+        companies.forEach(comp => {
+          let eachCompCount = 0;
+          offerings.forEach(eachOff => {
+            if (eachOff.companyId === comp.id) {
+              console.log("found a match");
+              eachCompCount++;
+            }
+          });
+
+          if (eachCompCount >= n) {
+            arr.push(comp);
+          }
+        });
+        return arr;
+      };
+      //returns array of products where each product has the average price of it's offerings
+      const processedProducts = (products, offerings) => {
+        let arr = [];
+        products.forEach(prod => {
+          offerings.forEach(ofs => {
+            let totalOffersPerProd = [];
+            console.log(totalOffersPerProd);
+            let totalSum = 0;
+
+            if (prod.id === ofs.productId) {
+              //console.log(ofs.price);
+              totalOffersPerProd.push(ofs.price);
+            }
+
+            totalOffersPerProd.forEach(elm => {
+              totalSum += elm;
+            });
+            let length = totalOffersPerProd.length;
+            let average = totalSum / length;
+            prod.averageOffer = average;
+          });
+          arr.push(prod);
+        });
+        return arr;
+      };
+    </script>
+  </body>
+</html>
